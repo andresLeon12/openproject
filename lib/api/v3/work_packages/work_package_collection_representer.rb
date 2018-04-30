@@ -120,17 +120,37 @@ module API
 
         collection :elements,
                    getter: ->(*) {
-                     generated_classes = ::Hash.new do |hash, work_package|
-                       hit = hash.values.find do |klass|
-                         klass.customizable.type_id == work_package.type_id &&
-                           klass.customizable.project_id == work_package.project_id
-                       end
+                     #generated_classes = ::Hash.new do |hash, work_package|
+                     #  hit = hash.values.find do |klass|
+                     #    klass.customizable.type_id == work_package.type_id &&
+                     #      klass.customizable.project_id == work_package.project_id
+                     #  end
 
-                       hash[work_package] = hit || element_decorator.create_class(work_package)
+                     #  hash[work_package] = hit || element_decorator.create_class(work_package)
+                     #end
+                     #
+                     #all_fields = WorkPackageCustomField
+                     #             .includes(:custom_options, :projects, :types)
+                     #             .where(projects: { id: represented.map(&:project_id).uniq },
+                     #                    types: { id: represented.map(&:type_id).uniq })
+                     #             .or(WorkPackageCustomField
+                     #                  .includes(:custom_options, :projects, :types)
+                     #                  .references(:projects, :types)
+                     #                  .where(is_for_all: true))
+                     #binding.pry
+
+                     all_fields = represented.map(&:available_custom_fields).flatten.uniq
+
+                     avail_cfs_class = Class.new do
+                       define_method(:available_custom_fields) do
+                         all_fields
+                       end
                      end
 
+                     rep_class = element_decorator.create_class(avail_cfs_class.new)
+
                      represented.map do |model|
-                       generated_classes[model].new(model, current_user: current_user)
+                       rep_class.new(model, current_user: current_user)
                      end
                    },
                    exec_context: :decorator,
@@ -160,8 +180,8 @@ module API
         end
 
         def schemas
-          schemas = schema_pairs.map do |project, type|
-            Schema::TypedWorkPackageSchema.new(project: project, type: type)
+          schemas = schema_pairs.map do |project, type, available_custom_fields|
+            Schema::TypedWorkPackageSchema.new(project: project, type: type, custom_fields: available_custom_fields)
           end
 
           Schema::WorkPackageSchemaCollectionRepresenter.new(schemas,
@@ -179,7 +199,7 @@ module API
 
         def schema_pairs
           represented
-            .map { |work_package| [work_package.project, work_package.type] }
+            .map { |work_package| [work_package.project, work_package.type, work_package.available_custom_fields] }
             .uniq
         end
 

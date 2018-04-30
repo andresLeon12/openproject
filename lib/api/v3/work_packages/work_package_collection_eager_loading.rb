@@ -79,6 +79,8 @@ module API
 
           ids_of_values = cvs.map(&:value).select { |v| v =~ /\A\d+\z/ }
 
+          return if ids_of_values.empty?
+
           values_by_id = scope.where(id: ids_of_values).group_by(&:id)
 
           cvs.each do |cv|

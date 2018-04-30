@@ -284,7 +284,8 @@ module API
           private
 
           def custom_field_cache_key
-            custom_fields = represented.project ? represented.project.all_work_package_custom_fields : []
+            #custom_fields = represented.project ? represented.project.all_work_package_custom_fields : []
+            custom_fields = represented.available_custom_fields
             OpenProject::Cache::CacheKey.expand(custom_fields)
           end
 

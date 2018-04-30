@@ -321,7 +321,13 @@ class WorkPackage < ActiveRecord::Base
 
   # Overrides Redmine::Acts::Customizable::InstanceMethods#available_custom_fields
   def available_custom_fields
-    project && type ? (project.all_work_package_custom_fields & type.custom_fields) : []
+    @available_custom_fields || begin
+      (project && type ? (project.all_work_package_custom_fields & type.custom_fields) : [])
+    end
+  end
+
+  def available_custom_fields=(fields)
+    @available_custom_fields = fields
   end
 
   # aliasing subject to name

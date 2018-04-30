@@ -35,7 +35,7 @@ module API
         include API::Decorators::LinkedResource
         include API::Caching::CachedRepresenter
 
-        cached_representer key_parts: %i(type project),
+        cached_representer key_parts: %i(project),
                            disabled: false
 
         class << self
@@ -623,9 +623,9 @@ module API
 
         self.to_eager_load = [{ children: { project: :enabled_modules } },
                               { parent: { project: :enabled_modules } },
-                              { project: %i(enabled_modules work_package_custom_fields) },
-                              { type: :custom_fields },
+                              { project: %i(enabled_modules) },
                               { custom_values: :custom_field },
+                              :type,
                               :watcher_users]
 
         # The dynamic class generation introduced because of the custom fields interferes with
