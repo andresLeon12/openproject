@@ -621,6 +621,10 @@ module API
           represented.custom_actions(current_user).to_a.sort_by(&:position)
         end
 
+        # TODO:
+        # * replace eager loading of all watcher_users by more pointed check for whether
+        # the current user is watching the work package
+        # * remove eager loading of type
         self.to_eager_load = %i[custom_values
                                 children
                                 parent
