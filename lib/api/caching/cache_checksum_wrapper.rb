@@ -41,26 +41,21 @@ module API
       end
       private_class_method :new
 
-      #def define_all_custom_field_accessors
-      #  binding.pry
-      #  available_custom_fields.each do |custom_field|
-      #    add_custom_field_accessors custom_field
-      #  end
-      #end
-
       def self.wrap(work_packages)
+        eager_load_custom_fields(work_packages)
+
         concat = <<-SQL
-          MD5(CONCAT(statuses.id, 
-                     statuses.updated_at, 
-                     users.id, 
-                     users.updated_on, 
-                     responsibles_work_packages.id, 
-                     responsibles_work_packages.updated_on, 
-                     assigned_tos_work_packages.id, 
-                     assigned_tos_work_packages.updated_on, 
-                     versions.id, 
+          MD5(CONCAT(statuses.id,
+                     statuses.updated_at,
+                     users.id,
+                     users.updated_on,
+                     responsibles_work_packages.id,
+                     responsibles_work_packages.updated_on,
+                     assigned_tos_work_packages.id,
+                     assigned_tos_work_packages.updated_on,
+                     versions.id,
                      versions.updated_on,
-                     types.id, 
+                     types.id,
                      types.updated_at,
                      enumerations.id,
                      enumerations.updated_at,
@@ -74,24 +69,55 @@ module API
                     .pluck('work_packages.id', concat)
                     .group_by(&:first)
 
-        all_fields = WorkPackageCustomField
-                     .includes(:custom_options)
-                     .left_joins(:projects, :types)
-                     .where(projects: { id: work_packages.map(&:project_id).uniq },
-                            types: { id: work_packages.map(&:type_id).uniq })
-                     .or(WorkPackageCustomField
-                           .includes(:custom_options)
-                           .left_joins(:projects, :types)
-                           .references(:projects, :types)
-                           .where(is_for_all: true))
+        project_ids = work_packages.map do |work_package|
+          [work_package.project_id, work_package.parent && work_package.parent.project_id] +
+            work_package.children.map(&:project_id)
+        end
+
+        projects = Project
+                   .includes(:enabled_modules)
+                   .where(id: project_ids.flatten.uniq.compact)
+                   .to_a
+
+        projects_by_id = projects.map { |p| [p.id, p] }.to_h
+
+        work_packages.map do |work_package|
+          # assign projects to work_package, children and parent
+
+          work_package.project = projects_by_id[work_package.project_id]
+          work_package.parent.project = projects_by_id[work_package.parent.project_id] if work_package.parent
+
+          work_package.children.each do |child|
+            child.project = projects_by_id[child.project_id]
+          end
+
+          work_package.custom_values.each do |cv|
+            cv.custom_field = @loaded_custom_fields_by_id[cv.custom_field_id]
+          end
+
+          work_package.available_custom_fields = custom_fields_of(work_package)
+
+          new(work_package, checksums[work_package.id].last.last)
+        end
+      end
+
+      def self.eager_load_custom_fields(work_packages)
+        configured_fields = WorkPackageCustomField
+                            .left_joins(:projects, :types)
+                            .where(projects: { id: work_packages.map(&:project_id).uniq },
+                                   types: { id: work_packages.map(&:type_id).uniq })
+                            .or(WorkPackageCustomField
+                                .left_joins(:projects, :types)
+                                .references(:projects, :types)
+                                .where(is_for_all: true))
 
         usages = ActiveRecord::Base
                  .connection
-                 .select_all(all_fields
-                             .select('projects.id project_id',
-                                     'types.id type_id',
-                                     'custom_fields.id custom_field_id')
-                             .to_sql)
+                 .select_all(configured_fields
+                               .select('projects.id project_id',
+                                       'types.id type_id',
+                                       'custom_fields.id custom_field_id')
+                               .to_sql)
                  .to_a
                  .uniq
 
@@ -101,22 +127,23 @@ module API
           end
         end
 
-        fields_by_id = all_fields.to_a.group_by(&:id)
+        @loaded_custom_fields = WorkPackageCustomField.where(id: usages.map { |u| u['custom_field_id'] })
+        @loaded_custom_fields_by_id = @loaded_custom_fields.map { |cf| [cf.id, cf] }.to_h
 
-        usages.each do |usage_hash|
-          usage_map[usage_hash['project_id']][usage_hash['type_id']] << fields_by_id[usage_hash['custom_field_id']]
+        @loaded_custom_field_map = begin
+          fields_by_id = @loaded_custom_fields.to_a.group_by(&:id)
+
+          usages.each do |usage_hash|
+            usage_map[usage_hash['project_id']][usage_hash['type_id']] << fields_by_id[usage_hash['custom_field_id']]
+          end
+
+          usage_map
         end
+      end
 
-        work_packages.map do |work_package|
-          type_key = work_package.type_id
-
-          fields = usage_map[work_package.project_id][work_package.type_id] +
-                   usage_map[nil][work_package.type_id]
-
-          work_package.available_custom_fields = fields
-
-          new(work_package, checksums[work_package.id].last.last)
-        end
+      def self.custom_fields_of(work_package)
+        @loaded_custom_field_map[work_package.project_id][work_package.type_id] +
+          @loaded_custom_field_map[nil][work_package.type_id]
       end
     end
   end

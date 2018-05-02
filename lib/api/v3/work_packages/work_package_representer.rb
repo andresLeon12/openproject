@@ -621,12 +621,11 @@ module API
           represented.custom_actions(current_user).to_a.sort_by(&:position)
         end
 
-        self.to_eager_load = [{ children: { project: :enabled_modules } },
-                              { parent: { project: :enabled_modules } },
-                              { project: %i(enabled_modules) },
-                              { custom_values: :custom_field },
-                              :type,
-                              :watcher_users]
+        self.to_eager_load = %i[custom_values
+                                children
+                                parent
+                                type
+                                watcher_users]
 
         # The dynamic class generation introduced because of the custom fields interferes with
         # the class naming as well as prevents calls to super
