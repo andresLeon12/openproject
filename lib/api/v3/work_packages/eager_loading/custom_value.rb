@@ -2,7 +2,7 @@
 
 #-- copyright
 # OpenProject is a project management system.
-# Copyright (C) 2012-2017 the OpenProject Foundation (OPF)
+# Copyright (C) 2012-2018 the OpenProject Foundation (OPF)
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License version 3.
@@ -25,45 +25,27 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
-# See doc/COPYRIGHT.rdoc for more details.
+# See docs/COPYRIGHT.rdoc for more details.
 #++
 
 module API
   module V3
     module WorkPackages
-      module CustomActions
-        class CustomActionsWrapper < SimpleDelegator
-          attr_writer :custom_actions
-          attr_accessor :work_package
-
-          def initialize(work_package, actions)
-            super(work_package)
-            self.work_package = work_package
-            self.custom_actions = actions
-          end
-          private_class_method :new
-
-          # Hiding the work_package's own custom_actions method
-          # to profit from the eager loaded actions
-          def custom_actions(_user)
-            @custom_actions
+      module EagerLoading
+        class CustomValue < Base
+          def apply(work_package)
+            work_package.association(:custom_values).loaded!
+            work_package.association(:custom_values).target = custom_values(work_package.id)
           end
 
-          def self.wrap(work_packages, user)
-            actions = CustomAction
-                      .available_conditions
-                      .inject(CustomAction.all) do |scope, condition|
+          private
 
-              scope.merge(condition.custom_action_scope(work_packages, user))
-            end
+          def custom_values(id)
+            @custom_values ||= ::CustomValue
+                               .where(customized_type: 'WorkPackage', customized_id: work_packages.map(&:id))
+                               .group_by(&:customized_id)
 
-            work_packages.map do |work_package|
-              applicable_actions = actions.select do |action|
-                action.conditions_fulfilled?(work_package, user)
-              end
-
-              new(work_package, applicable_actions)
-            end
+            @custom_values[id] || []
           end
         end
       end

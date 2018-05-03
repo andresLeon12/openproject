@@ -222,7 +222,7 @@ module API
 
         link :watch,
              uncacheable: true do
-          next if current_user.anonymous? || represented.watcher_users.include?(current_user)
+          next if current_user.anonymous? || current_user_watcher?
 
           {
             href: api_v3_paths.work_package_watchers(represented.id),
@@ -233,7 +233,7 @@ module API
 
         link :unwatch,
              uncacheable: true do
-          next unless represented.watcher_users.include?(current_user)
+          next unless current_user_watcher?
           {
             href: api_v3_paths.watcher(current_user.id, represented.id),
             method: :delete
@@ -553,6 +553,10 @@ module API
                                                current_user: current_user)
         end
 
+        def current_user_watcher?
+          represented.watchers.any? { |w| w.user_id == current_user.id }
+        end
+
         def attachments
           self_path = api_v3_paths.attachments_by_work_package(represented.id)
           attachments = represented.attachments
@@ -621,15 +625,10 @@ module API
           represented.custom_actions(current_user).to_a.sort_by(&:position)
         end
 
-        # TODO:
-        # * replace eager loading of all watcher_users by more pointed check for whether
-        # the current user is watching the work package
-        # * remove eager loading of type
-        self.to_eager_load = %i[custom_values
-                                children
+        self.to_eager_load = %i[children
                                 parent
                                 type
-                                watcher_users]
+                                watchers]
 
         # The dynamic class generation introduced because of the custom fields interferes with
         # the class naming as well as prevents calls to super

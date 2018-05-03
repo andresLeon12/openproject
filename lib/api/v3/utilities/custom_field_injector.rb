@@ -266,15 +266,6 @@ module API
           }
         end
 
-        #def inject_embedded_link_value(custom_field)
-        #  getter = embedded_link_value_getter(custom_field)
-
-        #  @class.property property_name(custom_field.id),
-        #                  embedded: true,
-        #                  exec_context: :decorator,
-        #                  getter: getter
-        #end
-
         def embedded_link_value_getter(custom_field)
           proc do
             next unless represented.available_custom_fields.include?(custom_field)
@@ -305,7 +296,6 @@ module API
 
         def property_value_getter_for(custom_field)
           ->(*) {
-            # TODO: has to be moved to a show_if
             next unless available_custom_fields.include?(custom_field)
 
             value = send custom_field.accessor_name

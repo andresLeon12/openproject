@@ -326,10 +326,6 @@ class WorkPackage < ActiveRecord::Base
     end
   end
 
-  def available_custom_fields=(fields)
-    @available_custom_fields = fields
-  end
-
   # aliasing subject to name
   # using :alias is not possible as AR will add the subject method later
   def name

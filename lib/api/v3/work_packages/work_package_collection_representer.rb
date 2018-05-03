@@ -32,7 +32,7 @@ module API
   module V3
     module WorkPackages
       class WorkPackageCollectionRepresenter < ::API::Decorators::OffsetPaginatedCollection
-        include ::API::V3::WorkPackages::WorkPackageCollectionEagerLoading
+        #include ::API::V3::WorkPackages::WorkPackageCollectionEagerLoading
         element_decorator ::API::V3::WorkPackages::WorkPackageRepresenter
 
         def initialize(models,
@@ -70,7 +70,7 @@ module API
           # and set those to be the represented collection.
           # A potential ordering is reapplied to the work package collection in ruby.
 
-          @represented = full_work_packages(represented)
+          @represented = ::API::V3::WorkPackages::WorkPackageEagerLoadingWrapper.wrap(represented, current_user)
         end
 
         link :sumsSchema do
