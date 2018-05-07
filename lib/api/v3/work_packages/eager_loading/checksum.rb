@@ -113,6 +113,16 @@ module API
             attr_accessor :cache_checksum
           end
         end
+
+        module CacheChecksumAccessorPatch
+          def cache_checksum
+            @cache_checksum
+          end
+
+          def cache_checksum=(sum)
+            @cache_checksum = sum
+          end
+        end
       end
     end
   end

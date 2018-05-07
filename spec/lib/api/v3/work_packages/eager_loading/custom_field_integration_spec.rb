@@ -68,7 +68,7 @@ describe ::API::V3::WorkPackages::EagerLoading::CustomField do
 
   describe '.apply' do
     it 'preloads the available_custom_fields' do
-      wrapped = EagerLoadingMockWrapper.wrap(described_class, [work_package])
+      wrapped = EagerLoadingMockWrapper.wrap_all(described_class, [work_package])
 
       expect(work_package)
         .not_to receive(:available_custom_fields)

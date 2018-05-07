@@ -55,7 +55,7 @@ describe ::API::V3::WorkPackages::EagerLoading::CustomAction do
 
   describe '.apply' do
     it 'preloads the correct custom_actions' do
-      wrapped = EagerLoadingMockWrapper.wrap(described_class, [work_package1, work_package2])
+      wrapped = EagerLoadingMockWrapper.wrap_all(described_class, [work_package1, work_package2])
 
       expect(work_package1)
         .not_to receive(:custom_actions)

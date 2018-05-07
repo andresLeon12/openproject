@@ -625,8 +625,7 @@ module API
           represented.custom_actions(current_user).to_a.sort_by(&:position)
         end
 
-        self.to_eager_load = %i[children
-                                parent
+        self.to_eager_load = %i[parent
                                 type
                                 watchers]
 

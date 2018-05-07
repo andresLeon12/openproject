@@ -49,14 +49,14 @@ describe ::API::V3::WorkPackages::EagerLoading::Checksum do
   describe '.apply' do
     let!(:orig_checksum) do
       EagerLoadingMockWrapper
-        .wrap(described_class, [work_package])
+        .wrap_all(described_class, [work_package])
         .first
         .cache_checksum
     end
 
     let(:new_checksum) do
       EagerLoadingMockWrapper
-        .wrap(described_class, [work_package])
+        .wrap_all(described_class, [work_package])
         .first
         .cache_checksum
     end

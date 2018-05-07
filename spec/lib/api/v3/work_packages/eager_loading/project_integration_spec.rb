@@ -43,7 +43,7 @@ describe ::API::V3::WorkPackages::EagerLoading::Project do
 
   describe '.apply' do
     it 'preloads the projects of the work packages, their parents and children' do
-      wrapped = EagerLoadingMockWrapper.wrap(described_class, [work_package1, work_package2])
+      wrapped = EagerLoadingMockWrapper.wrap_all(described_class, [work_package1, work_package2])
 
       wrapped.each do |w|
         expect(w.association(:project))

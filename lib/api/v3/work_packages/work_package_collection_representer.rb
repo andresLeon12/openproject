@@ -70,7 +70,7 @@ module API
           # and set those to be the represented collection.
           # A potential ordering is reapplied to the work package collection in ruby.
 
-          @represented = ::API::V3::WorkPackages::WorkPackageEagerLoadingWrapper.wrap(represented, current_user)
+          @represented = ::API::V3::WorkPackages::WorkPackageEagerLoadingWrapper.wrap_all(represented, current_user)
         end
 
         link :sumsSchema do
