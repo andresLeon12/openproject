@@ -40,14 +40,14 @@ describe ::API::V3::WorkPackages::WorkPackageRepresenter do
   let(:parent) { nil }
   let(:work_package) do
     FactoryBot.build_stubbed(:stubbed_work_package,
-                              id: 42,
-                              start_date: Date.today.to_datetime,
-                              due_date: Date.today.to_datetime,
-                              done_ratio: 50,
-                              estimated_hours: 6.0,
-                              parent: parent,
-                              type: type,
-                              project: project)
+                             id: 42,
+                             start_date: Date.today.to_datetime,
+                             due_date: Date.today.to_datetime,
+                             done_ratio: 50,
+                             estimated_hours: 6.0,
+                             parent: parent,
+                             type: type,
+                             project: project)
   end
   let(:all_permissions) do
     %i[
@@ -75,6 +75,11 @@ describe ::API::V3::WorkPackages::WorkPackageRepresenter do
       .to receive(:allowed_to?) do |permission, context|
       permissions.include?(permission)
     end
+
+    allow(::API::V3::WorkPackages::WorkPackageEagerLoadingWrapper)
+      .to receive(:wrap_one)
+      .with(work_package, current_user)
+      .and_return(work_package)
   end
 
   context 'generation' do

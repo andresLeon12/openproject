@@ -34,8 +34,12 @@ module API
       class WorkPackageEagerLoadingWrapper < SimpleDelegator
         private_class_method :new
 
+        def wrapped?
+          true
+        end
+
         class << self
-          def wrap_all(ids_in_order, current_user)
+          def wrap(ids_in_order, current_user)
             work_packages = add_eager_loading(WorkPackage.where(id: ids_in_order), current_user).to_a
 
             eager_load_ancestry(work_packages, ids_in_order, current_user)
@@ -49,17 +53,17 @@ module API
             work_packages.sort_by { |wp| ids_in_order.index(wp.id) }
           end
 
-          def wrap(work_package)
-            containers = eager_loader_classes_one
-                           .map { |klass| klass.new([work_package]) }
+          def wrap_one(work_package, current_user)
+            return work_package if work_package.respond_to?(:wrapped?)
 
-            work_package.extend(::API::V3::WorkPackages::EagerLoading::CacheChecksumAccessorPatch)
+            work_packages = [work_package]
+            work_packages = wrap_and_apply(work_packages, eager_loader_classes_all)
 
-            containers.each do |container|
-              container.apply(work_package)
-            end
+            eager_load_user_custom_values(work_packages)
+            eager_load_version_custom_values(work_packages)
+            eager_load_list_custom_values(work_packages)
 
-            work_package
+            work_packages.first
           end
 
           private
@@ -79,12 +83,6 @@ module API
             end
 
             work_packages
-          end
-
-          def eager_loader_classes_one
-            [
-              ::API::V3::WorkPackages::EagerLoading::Checksum
-            ]
           end
 
           def eager_loader_classes_all

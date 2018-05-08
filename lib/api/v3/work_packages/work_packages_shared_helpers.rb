@@ -80,10 +80,8 @@ module API
         end
 
         def work_package_representer(work_package = @work_package)
-          wrapped = ::API::V3::WorkPackages::WorkPackageEagerLoadingWrapper.wrap(work_package)
-
           ::API::V3::WorkPackages::WorkPackageRepresenter.create(
-            wrapped,
+            work_package,
             current_user: current_user,
             embed_links: true
           )

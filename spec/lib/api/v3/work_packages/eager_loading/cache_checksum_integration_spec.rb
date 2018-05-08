@@ -32,12 +32,12 @@ require 'spec_helper'
 require_relative './eager_loading_mock_wrapper'
 
 describe ::API::V3::WorkPackages::EagerLoading::Checksum do
-  let(:responsible) { FactoryGirl.create(:user) }
-  let(:assignee) { FactoryGirl.create(:user) }
-  let(:category) { FactoryGirl.create(:category) }
-  let(:version) { FactoryGirl.create(:version) }
+  let(:responsible) { FactoryBot.create(:user) }
+  let(:assignee) { FactoryBot.create(:user) }
+  let(:category) { FactoryBot.create(:category) }
+  let(:version) { FactoryBot.create(:version) }
   let!(:work_package) do
-    FactoryGirl.create(:work_package,
+    FactoryBot.create(:work_package,
                        responsible: responsible,
                        assigned_to: assignee,
                        fixed_version: version,
@@ -49,14 +49,14 @@ describe ::API::V3::WorkPackages::EagerLoading::Checksum do
   describe '.apply' do
     let!(:orig_checksum) do
       EagerLoadingMockWrapper
-        .wrap_all(described_class, [work_package])
+        .wrap(described_class, [work_package])
         .first
         .cache_checksum
     end
 
     let(:new_checksum) do
       EagerLoadingMockWrapper
-        .wrap_all(described_class, [work_package])
+        .wrap(described_class, [work_package])
         .first
         .cache_checksum
     end

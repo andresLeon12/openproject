@@ -59,6 +59,8 @@ module API
           # go through method_missing which will take more time.
           model.define_all_custom_field_accessors
 
+          model = ::API::V3::WorkPackages::WorkPackageEagerLoadingWrapper.wrap_one(model, current_user)
+
           super
         end
 
@@ -559,7 +561,7 @@ module API
 
         def attachments
           self_path = api_v3_paths.attachments_by_work_package(represented.id)
-          attachments = represented.attachments
+          attachments = represented.attachments.includes(:container)
           ::API::V3::Attachments::AttachmentCollectionRepresenter.new(attachments,
                                                                       self_path,
                                                                       current_user: current_user)

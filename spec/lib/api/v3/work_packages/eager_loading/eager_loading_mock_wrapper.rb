@@ -29,7 +29,7 @@
 #++
 
 class EagerLoadingMockWrapper
-  def self.wrap_all(klass, work_packages)
+  def self.wrap(klass, work_packages)
     klass_module = klass.module
 
     delegator_class = Class.new(SimpleDelegator) do

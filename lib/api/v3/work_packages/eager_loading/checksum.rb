@@ -41,14 +41,12 @@ module API
             CacheChecksumAccessor
           end
 
-          private
+          class << self
+            def for(work_package)
+              fetch_checksums_for(Array(work_package))[work_package.id]
+            end
 
-          def cache_checksum_of(work_package)
-            cache_checksums[work_package.id]
-          end
-
-          def cache_checksums
-            @cache_checksums ||= begin
+            def fetch_checksums_for(work_packages)
               concat = if OpenProject::Database.mysql?
                          md5_concat_mysql
                        else
@@ -61,10 +59,11 @@ module API
                 .pluck('work_packages.id', concat.squish)
                 .to_h
             end
-          end
 
-          def md5_concat_postgresql
-            <<-SQL
+            protected
+
+            def md5_concat_postgresql
+              <<-SQL
                 MD5(CONCAT(statuses.id,
                            statuses.updated_at,
                            users.id,
@@ -81,11 +80,11 @@ module API
                            enumerations.updated_at,
                            categories.id,
                            categories.updated_at))
-            SQL
-          end
+              SQL
+            end
 
-          def md5_concat_mysql
-            <<-SQL
+            def md5_concat_mysql
+              <<-SQL
                 MD5(CONCAT(COALESCE(statuses.id, 0),
                            COALESCE(statuses.updated_at, '-'),
                            COALESCE(users.id, '-'),
@@ -102,7 +101,18 @@ module API
                            COALESCE(enumerations.updated_at, '-'),
                            COALESCE(categories.id, '-'),
                            COALESCE(categories.updated_at, '-')))
-            SQL
+              SQL
+            end
+          end
+
+          private
+
+          def cache_checksum_of(work_package)
+            cache_checksums[work_package.id]
+          end
+
+          def cache_checksums
+            @cache_checksums ||= self.class.fetch_checksums_for(work_packages)
           end
         end
 
@@ -111,16 +121,6 @@ module API
 
           included do
             attr_accessor :cache_checksum
-          end
-        end
-
-        module CacheChecksumAccessorPatch
-          def cache_checksum
-            @cache_checksum
-          end
-
-          def cache_checksum=(sum)
-            @cache_checksum = sum
           end
         end
       end

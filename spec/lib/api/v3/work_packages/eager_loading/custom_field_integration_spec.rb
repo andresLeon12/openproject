@@ -32,35 +32,35 @@ require 'spec_helper'
 require_relative './eager_loading_mock_wrapper'
 
 describe ::API::V3::WorkPackages::EagerLoading::CustomField do
-  let!(:work_package) { FactoryGirl.create(:work_package) }
+  let!(:work_package) { FactoryBot.create(:work_package) }
   let!(:type) { work_package.type }
-  let!(:other_type) { FactoryGirl.create(:type) }
+  let!(:other_type) { FactoryBot.create(:type) }
   let!(:project) { work_package.project }
-  let!(:other_project) { FactoryGirl.create(:project) }
+  let!(:other_project) { FactoryBot.create(:project) }
   let!(:type_project_cf) do
-    FactoryGirl.create(:list_wp_custom_field).tap do |cf|
+    FactoryBot.create(:list_wp_custom_field).tap do |cf|
       type.custom_fields << cf
       project.work_package_custom_fields << cf
     end
   end
   let!(:for_all_type_cf) do
-    FactoryGirl.create(:list_wp_custom_field, is_for_all: true).tap do |cf|
+    FactoryBot.create(:list_wp_custom_field, is_for_all: true).tap do |cf|
       type.custom_fields << cf
     end
   end
   let!(:for_all_other_type_cf) do
-    FactoryGirl.create(:list_wp_custom_field, is_for_all: true).tap do |cf|
+    FactoryBot.create(:list_wp_custom_field, is_for_all: true).tap do |cf|
       other_type.custom_fields << cf
     end
   end
   let!(:type_other_project_cf) do
-    FactoryGirl.create(:list_wp_custom_field).tap do |cf|
+    FactoryBot.create(:list_wp_custom_field).tap do |cf|
       type.custom_fields << cf
       other_project.work_package_custom_fields << cf
     end
   end
   let!(:other_type_project_cf) do
-    FactoryGirl.create(:list_wp_custom_field).tap do |cf|
+    FactoryBot.create(:list_wp_custom_field).tap do |cf|
       other_type.custom_fields << cf
       project.work_package_custom_fields << cf
     end
@@ -68,10 +68,12 @@ describe ::API::V3::WorkPackages::EagerLoading::CustomField do
 
   describe '.apply' do
     it 'preloads the available_custom_fields' do
-      wrapped = EagerLoadingMockWrapper.wrap_all(described_class, [work_package])
+      wrapped = EagerLoadingMockWrapper.wrap(described_class, [work_package])
 
-      expect(work_package)
-        .not_to receive(:available_custom_fields)
+      expect(type)
+        .not_to receive(:custom_fields)
+      expect(project)
+        .not_to receive(:all_work_package_custom_fields)
 
       wrapped.each do |w|
         expect(w.available_custom_fields)

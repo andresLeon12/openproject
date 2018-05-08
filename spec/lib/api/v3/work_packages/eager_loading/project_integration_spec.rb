@@ -32,18 +32,18 @@ require 'spec_helper'
 require_relative './eager_loading_mock_wrapper'
 
 describe ::API::V3::WorkPackages::EagerLoading::Project do
-  let!(:parent_work_package1) { FactoryGirl.create(:work_package, project: parent_project) }
-  let!(:work_package1) { FactoryGirl.create(:work_package, project: project, parent: parent_work_package1) }
-  let!(:work_package2) { FactoryGirl.create(:work_package, project: project, parent: parent_work_package1) }
-  let!(:child_work_package1) { FactoryGirl.create(:work_package, project: child_project, parent: work_package1) }
-  let!(:child_work_package2) { FactoryGirl.create(:work_package, project: child_project, parent: work_package2) }
-  let!(:project) { FactoryGirl.create(:project) }
-  let!(:parent_project) { FactoryGirl.create(:project) }
-  let!(:child_project) { FactoryGirl.create(:project) }
+  let!(:parent_work_package1) { FactoryBot.create(:work_package, project: parent_project) }
+  let!(:work_package1) { FactoryBot.create(:work_package, project: project, parent: parent_work_package1) }
+  let!(:work_package2) { FactoryBot.create(:work_package, project: project, parent: parent_work_package1) }
+  let!(:child_work_package1) { FactoryBot.create(:work_package, project: child_project, parent: work_package1) }
+  let!(:child_work_package2) { FactoryBot.create(:work_package, project: child_project, parent: work_package2) }
+  let!(:project) { FactoryBot.create(:project) }
+  let!(:parent_project) { FactoryBot.create(:project) }
+  let!(:child_project) { FactoryBot.create(:project) }
 
   describe '.apply' do
     it 'preloads the projects of the work packages, their parents and children' do
-      wrapped = EagerLoadingMockWrapper.wrap_all(described_class, [work_package1, work_package2])
+      wrapped = EagerLoadingMockWrapper.wrap(described_class, [work_package1, work_package2])
 
       wrapped.each do |w|
         expect(w.association(:project))
