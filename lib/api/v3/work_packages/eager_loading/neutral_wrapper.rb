@@ -31,19 +31,19 @@
 module API
   module V3
     module WorkPackages
-      class WorkPackagePayloadRepresenter < WorkPackageRepresenter
-        include ::API::Utilities::PayloadRepresenter
+      module EagerLoading
+        class NeutralWrapper < SimpleDelegator
+          private_class_method :new
 
-        cached_representer disabled: true
+          def wrapped?
+            true
+          end
 
-        def initialize(model, current_user:, embed_links: false)
-          model = ::API::V3::WorkPackages::EagerLoading::NeutralWrapper.wrap_one(model, current_user)
-
-          super
-        end
-
-        def writeable_attributes
-          super + ["date"]
+          class << self
+            def wrap_one(work_package, _current_user)
+              new(work_package)
+            end
+          end
         end
       end
     end

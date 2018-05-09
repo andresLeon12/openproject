@@ -28,24 +28,33 @@
 # See docs/COPYRIGHT.rdoc for more details.
 #++
 
-module API
-  module V3
-    module WorkPackages
-      class WorkPackagePayloadRepresenter < WorkPackageRepresenter
-        include ::API::Utilities::PayloadRepresenter
-
-        cached_representer disabled: true
-
-        def initialize(model, current_user:, embed_links: false)
-          model = ::API::V3::WorkPackages::EagerLoading::NeutralWrapper.wrap_one(model, current_user)
-
-          super
-        end
-
-        def writeable_attributes
-          super + ["date"]
-        end
-      end
+shared_context 'eager loaded work package representer' do
+  let(:the_work_package) do
+    if defined?(work_package)
+      work_package
+    else
+      raise "work_package needs to be defined"
     end
+  end
+
+  let(:the_user) do
+    if defined?(user)
+      user
+    elsif defined?(current_user)
+      current_user
+    else
+      raise "user needs to be defined"
+    end
+  end
+
+  before do
+    allow(::API::V3::WorkPackages::WorkPackageEagerLoadingWrapper)
+      .to receive(:wrap_one)
+      .with(the_work_package, the_user)
+      .and_return(the_work_package)
+
+    allow(the_work_package)
+      .to receive(:cache_checksum)
+      .and_return(srand)
   end
 end

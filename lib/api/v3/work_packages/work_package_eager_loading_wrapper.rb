@@ -66,6 +66,10 @@ module API
             work_packages.first
           end
 
+          def wrap_neutral(work_package, current_user)
+            new(work_package)
+          end
+
           private
 
           def wrap_and_apply(work_packages, container_classes)

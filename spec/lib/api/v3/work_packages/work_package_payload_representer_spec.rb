@@ -51,11 +51,6 @@ describe ::API::V3::WorkPackages::WorkPackagePayloadRepresenter do
 
   before do
     allow(work_package).to receive(:lock_version).and_return(1)
-
-    allow(::API::V3::WorkPackages::WorkPackageEagerLoadingWrapper)
-      .to receive(:wrap_one)
-      .with(work_package, user)
-      .and_return(work_package)
   end
 
   context 'generation' do
