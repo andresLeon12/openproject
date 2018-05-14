@@ -271,7 +271,7 @@ module API
             # Do not embed list or multi values as their links contain all the
             # information needed (title and href) already.
             next if !represented.available_custom_fields.include?(custom_field) ||
-                    custom_field.list ||
+                    custom_field.list? ||
                     custom_field.multi_value?
 
             value = represented.send custom_field.accessor_name
