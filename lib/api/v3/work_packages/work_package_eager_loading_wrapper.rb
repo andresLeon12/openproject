@@ -42,32 +42,15 @@ module API
           def wrap(ids_in_order, current_user)
             work_packages = add_eager_loading(WorkPackage.where(id: ids_in_order), current_user).to_a
 
-            eager_load_ancestry(work_packages, ids_in_order, current_user)
-
-            work_packages = wrap_and_apply(work_packages, eager_loader_classes_all)
-
-            eager_load_user_custom_values(work_packages)
-            eager_load_version_custom_values(work_packages)
-            eager_load_list_custom_values(work_packages)
-
-            work_packages.sort_by { |wp| ids_in_order.index(wp.id) }
+            wrap_and_apply(work_packages, eager_loader_classes_all)
+              .sort_by { |wp| ids_in_order.index(wp.id) }
           end
 
-          def wrap_one(work_package, current_user)
+          def wrap_one(work_package, _current_user)
             return work_package if work_package.respond_to?(:wrapped?)
 
-            work_packages = [work_package]
-            work_packages = wrap_and_apply(work_packages, eager_loader_classes_all)
-
-            eager_load_user_custom_values(work_packages)
-            eager_load_version_custom_values(work_packages)
-            eager_load_list_custom_values(work_packages)
-
-            work_packages.first
-          end
-
-          def wrap_neutral(work_package, current_user)
-            new(work_package)
+            wrap_and_apply([work_package], eager_loader_classes_all)
+              .first
           end
 
           private
@@ -92,10 +75,10 @@ module API
           def eager_loader_classes_all
             [
               ::API::V3::WorkPackages::EagerLoading::Hierarchy,
+              ::API::V3::WorkPackages::EagerLoading::Ancestor,
               ::API::V3::WorkPackages::EagerLoading::Project,
               ::API::V3::WorkPackages::EagerLoading::Checksum,
               ::API::V3::WorkPackages::EagerLoading::CustomValue,
-              ::API::V3::WorkPackages::EagerLoading::CustomField,
               ::API::V3::WorkPackages::EagerLoading::CustomAction
             ]
           end
@@ -106,53 +89,6 @@ module API
               .include_spent_hours(current_user)
               .select('work_packages.*')
               .distinct
-          end
-
-          def eager_load_ancestry(work_packages, ids_in_order, current_user)
-            grouped = WorkPackage.aggregate_ancestors(ids_in_order, current_user)
-
-            work_packages.each do |wp|
-              wp.work_package_ancestors = grouped[wp.id] || []
-            end
-          end
-
-          def eager_load_user_custom_values(work_packages)
-            eager_load_custom_values work_packages, 'user', User.includes(:preference)
-          end
-
-          def eager_load_version_custom_values(work_packages)
-            eager_load_custom_values work_packages, 'version', Version
-          end
-
-          def eager_load_list_custom_values(work_packages)
-            eager_load_custom_values work_packages, 'list', CustomOption
-          end
-
-          def eager_load_custom_values(work_packages, field_format, scope)
-            cvs = custom_values_of(work_packages, field_format)
-
-            ids_of_values = cvs.map(&:value).select { |v| v =~ /\A\d+\z/ }
-
-            return if ids_of_values.empty?
-
-            values_by_id = scope.where(id: ids_of_values).group_by(&:id)
-
-            cvs.each do |cv|
-              next unless values_by_id[cv.value.to_i]
-              cv.value = values_by_id[cv.value.to_i].first
-            end
-          end
-
-          def custom_values_of(work_packages, field_format)
-            cvs = []
-
-            work_packages.each do |wp|
-              wp.custom_values.each do |cv|
-                cvs << cv if cv.custom_field && cv.custom_field.field_format == field_format && cv.value.present?
-              end
-            end
-
-            cvs
           end
         end
 

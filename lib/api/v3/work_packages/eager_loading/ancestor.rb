@@ -28,25 +28,22 @@
 # See docs/COPYRIGHT.rdoc for more details.
 #++
 
-class CustomValue::ListStrategy < CustomValue::ARObjectStrategy
-  def validate_type_of_value
-    unless custom_field.custom_options.pluck(:id).include?(value.to_i)
-      :inclusion
+module API
+  module V3
+    module WorkPackages
+      module EagerLoading
+        class Ancestor < Base
+          def apply(work_package)
+            work_package.work_package_ancestors = ancestors[work_package.id] || []
+          end
+
+          private
+
+          def ancestors
+            @ancestors ||= WorkPackage.aggregate_ancestors(work_packages.map(&:id), User.current)
+          end
+        end
+      end
     end
-  end
-
-  def typed_value
-    super_value = super
-    super_value && super_value.to_s || nil
-  end
-
-  private
-
-  def ar_class
-    CustomOption
-  end
-
-  def ar_object(value)
-    CustomOption.find_by(id: value.to_s).value || "#{value} not found"
   end
 end

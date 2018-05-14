@@ -31,14 +31,28 @@
 require 'spec_helper'
 require_relative './eager_loading_mock_wrapper'
 
-describe ::API::V3::WorkPackages::EagerLoading::CustomField do
+describe ::API::V3::WorkPackages::EagerLoading::CustomValue do
   let!(:work_package) { FactoryBot.create(:work_package) }
   let!(:type) { work_package.type }
   let!(:other_type) { FactoryBot.create(:type) }
   let!(:project) { work_package.project }
   let!(:other_project) { FactoryBot.create(:project) }
-  let!(:type_project_cf) do
+  let!(:user) { FactoryBot.create(:user) }
+  let!(:version) { FactoryBot.create(:version, project: project) }
+  let!(:type_project_list_cf) do
     FactoryBot.create(:list_wp_custom_field).tap do |cf|
+      type.custom_fields << cf
+      project.work_package_custom_fields << cf
+    end
+  end
+  let!(:type_project_user_cf) do
+    FactoryBot.create(:user_wp_custom_field).tap do |cf|
+      type.custom_fields << cf
+      project.work_package_custom_fields << cf
+    end
+  end
+  let!(:type_project_version_cf) do
+    FactoryBot.create(:version_wp_custom_field, name: 'blubs').tap do |cf|
       type.custom_fields << cf
       project.work_package_custom_fields << cf
     end
@@ -67,7 +81,24 @@ describe ::API::V3::WorkPackages::EagerLoading::CustomField do
   end
 
   describe '.apply' do
-    it 'preloads the available_custom_fields' do
+    it 'preloads the custom fields and values' do
+      FactoryBot.create(:custom_value,
+                        custom_field: type_project_list_cf,
+                        customized: work_package,
+                        value: type_project_list_cf.custom_options.last.id)
+
+      FactoryBot.build(:custom_value,
+                       custom_field: type_project_user_cf,
+                       customized: work_package,
+                       value: user.id)
+                .save(validate: false)
+
+      FactoryBot.create(:custom_value,
+                        custom_field: type_project_version_cf,
+                        customized: work_package,
+                        value: version.id)
+
+      work_package = WorkPackage.first
       wrapped = EagerLoadingMockWrapper.wrap(described_class, [work_package])
 
       expect(type)
@@ -75,9 +106,24 @@ describe ::API::V3::WorkPackages::EagerLoading::CustomField do
       expect(project)
         .not_to receive(:all_work_package_custom_fields)
 
+      [CustomOption, User, Version].each do |klass|
+        expect(klass)
+          .not_to receive(:find_by)
+      end
+
       wrapped.each do |w|
         expect(w.available_custom_fields)
-          .to match_array [type_project_cf, for_all_type_cf]
+          .to match_array [type_project_list_cf,
+                           type_project_version_cf,
+                           type_project_user_cf,
+                           for_all_type_cf]
+
+        expect(work_package.send(:"custom_field_#{type_project_version_cf.id}"))
+          .to eql version
+        expect(work_package.send(:"custom_field_#{type_project_list_cf.id}"))
+          .to eql type_project_list_cf.custom_options.last.name
+        expect(work_package.send(:"custom_field_#{type_project_user_cf.id}"))
+          .to eql user
       end
     end
   end
