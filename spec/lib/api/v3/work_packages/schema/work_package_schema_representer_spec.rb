@@ -794,8 +794,8 @@ describe ::API::V3::WorkPackages::Schema::WorkPackageSchemaRepresenter do
     end
 
     it 'changes when the custom_fields changes' do
-      allow(work_package.project)
-        .to receive(:all_work_package_custom_fields)
+      allow(work_package)
+        .to receive(:available_custom_fields)
         .and_return [FactoryBot.build_stubbed(:custom_field)]
 
       expect(joined_cache_key).to_not eql(original_cache_key)

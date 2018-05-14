@@ -43,6 +43,10 @@ module API
             def wrap_one(work_package, _current_user)
               new(work_package)
             end
+
+            def name
+              "WorkPackage"
+            end
           end
         end
       end

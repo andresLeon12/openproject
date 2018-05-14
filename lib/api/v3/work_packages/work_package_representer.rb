@@ -120,6 +120,7 @@ module API
 
         link :copy,
              cache_if: -> { current_user_allowed_to(:move_work_packages, context: represented.project) } do
+
           next if represented.new_record?
 
           {
