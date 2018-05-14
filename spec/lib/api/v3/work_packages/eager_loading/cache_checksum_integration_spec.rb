@@ -38,10 +38,10 @@ describe ::API::V3::WorkPackages::EagerLoading::Checksum do
   let(:version) { FactoryBot.create(:version) }
   let!(:work_package) do
     FactoryBot.create(:work_package,
-                       responsible: responsible,
-                       assigned_to: assignee,
-                       fixed_version: version,
-                       category: category)
+                      responsible: responsible,
+                      assigned_to: assignee,
+                      fixed_version: version,
+                      category: category)
   end
   let!(:type) { work_package.type }
   let!(:project) { work_package.project }

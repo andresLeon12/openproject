@@ -29,32 +29,14 @@
 #++
 
 shared_context 'eager loaded work package representer' do
-  let(:the_work_package) do
-    if defined?(work_package)
-      work_package
-    else
-      raise "work_package needs to be defined"
-    end
-  end
-
-  let(:the_user) do
-    if defined?(user)
-      user
-    elsif defined?(current_user)
-      current_user
-    else
-      raise "user needs to be defined"
-    end
-  end
-
   before do
     allow(::API::V3::WorkPackages::WorkPackageEagerLoadingWrapper)
-      .to receive(:wrap_one)
-      .with(the_work_package, the_user)
-      .and_return(the_work_package)
+      .to receive(:wrap_one) do |work_package, user|
+      allow(work_package)
+        .to receive(:cache_checksum)
+        .and_return(srand)
 
-    allow(the_work_package)
-      .to receive(:cache_checksum)
-      .and_return(srand)
+      work_package
+    end
   end
 end

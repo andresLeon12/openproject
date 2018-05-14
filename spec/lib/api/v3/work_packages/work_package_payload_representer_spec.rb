@@ -33,11 +33,11 @@ describe ::API::V3::WorkPackages::WorkPackagePayloadRepresenter do
 
   let(:work_package) do
     FactoryBot.build_stubbed(:work_package,
-                              start_date: Date.today.to_datetime,
-                              due_date: Date.today.to_datetime,
-                              created_at: DateTime.now,
-                              updated_at: DateTime.now,
-                              type: FactoryBot.build_stubbed(:type))
+                             start_date: Date.today.to_datetime,
+                             due_date: Date.today.to_datetime,
+                             created_at: DateTime.now,
+                             updated_at: DateTime.now,
+                             type: FactoryBot.build_stubbed(:type))
   end
 
   let(:user) do
@@ -232,8 +232,8 @@ describe ::API::V3::WorkPackages::WorkPackagePayloadRepresenter do
         context 'no due date' do
           let(:work_package) do
             FactoryBot.build_stubbed(:work_package,
-                                      type: FactoryBot.build_stubbed(:type),
-                                      due_date: nil)
+                                     type: FactoryBot.build_stubbed(:type),
+                                     due_date: nil)
           end
 
           it 'renders as null' do

@@ -38,6 +38,7 @@ describe ::API::V3::WorkPackages::WorkPackageRepresenter do
     described_class.create(work_package, current_user: current_user, embed_links: embed_links)
   end
   let(:parent) { nil }
+  let(:priority) { FactoryBot.build_stubbed(:priority, updated_at: Time.now) }
   let(:work_package) do
     FactoryBot.build_stubbed(:stubbed_work_package,
                              id: 42,
@@ -47,7 +48,8 @@ describe ::API::V3::WorkPackages::WorkPackageRepresenter do
                              estimated_hours: 6.0,
                              parent: parent,
                              type: type,
-                             project: project)
+                             project: project,
+                             priority: priority)
   end
   let(:all_permissions) do
     %i[
@@ -72,15 +74,12 @@ describe ::API::V3::WorkPackages::WorkPackageRepresenter do
     allow(User).to receive(:current).and_return current_user
 
     allow(current_user)
-      .to receive(:allowed_to?) do |permission, context|
+      .to receive(:allowed_to?) do |permission, _context|
       permissions.include?(permission)
     end
-
-    allow(::API::V3::WorkPackages::WorkPackageEagerLoadingWrapper)
-      .to receive(:wrap_one)
-      .with(work_package, current_user)
-      .and_return(work_package)
   end
+
+  include_context 'eager loaded work package representer'
 
   context 'generation' do
     subject(:generated) { representer.to_json }
@@ -113,7 +112,7 @@ describe ::API::V3::WorkPackages::WorkPackageRepresenter do
         context 'when the work package has a milestone type' do
           let(:milestone_type) do
             FactoryBot.build_stubbed(:type,
-                                      is_milestone: true)
+                                     is_milestone: true)
           end
 
           before do
@@ -143,7 +142,7 @@ describe ::API::V3::WorkPackages::WorkPackageRepresenter do
         context 'when the work package has a milestone type' do
           let(:milestone_type) do
             FactoryBot.build_stubbed(:type,
-                                      is_milestone: true)
+                                     is_milestone: true)
           end
 
           before do
@@ -159,7 +158,7 @@ describe ::API::V3::WorkPackages::WorkPackageRepresenter do
       describe 'date' do
         let(:milestone_type) do
           FactoryBot.build_stubbed(:type,
-                                    is_milestone: true)
+                                   is_milestone: true)
         end
 
         before do
@@ -184,7 +183,7 @@ describe ::API::V3::WorkPackages::WorkPackageRepresenter do
         context 'when the work package has a non milestone type' do
           let(:none_milestone_type) do
             FactoryBot.build_stubbed(:type,
-                                      is_milestone: false)
+                                     is_milestone: false)
           end
 
           before do
@@ -225,10 +224,10 @@ describe ::API::V3::WorkPackages::WorkPackageRepresenter do
     describe 'estimatedTime' do
       let(:work_package) do
         FactoryBot.build_stubbed(:work_package,
-                                  id: 42,
-                                  created_at: DateTime.now,
-                                  updated_at: DateTime.now,
-                                  estimated_hours: 6.5)
+                                 id: 42,
+                                 created_at: DateTime.now,
+                                 updated_at: DateTime.now,
+                                 estimated_hours: 6.5)
       end
 
       it { is_expected.to be_json_eql('PT6H30M'.to_json).at_path('estimatedTime') }
@@ -260,7 +259,7 @@ describe ::API::V3::WorkPackages::WorkPackageRepresenter do
           before do
             allow(work_package)
               .to receive(:spent_hours)
-                    .and_return(42.5)
+              .and_return(42.5)
           end
 
           it { is_expected.to be_json_eql('P1DT18H30M'.to_json).at_path('spentTime') }
@@ -488,8 +487,6 @@ describe ::API::V3::WorkPackages::WorkPackageRepresenter do
       end
 
       describe 'priority' do
-        let(:priority) { work_package.priority }
-
         it_behaves_like 'has a titled link' do
           let(:link) { 'priority' }
           let(:href) { api_v3_paths.priority(priority.id) }
@@ -570,14 +567,11 @@ describe ::API::V3::WorkPackages::WorkPackageRepresenter do
       end
 
       context 'when the user is watching the work package' do
-        let(:watchers) { [current_user] }
+        let(:watchers) { [FactoryBot.build_stubbed(:watcher, watchable: work_package, user: current_user)] }
 
         before do
           allow(work_package)
-            .to receive(:watcher_users)
-            .and_return(watchers)
-          allow(watchers)
-            .to receive(:order)
+            .to receive(:watchers)
             .and_return(watchers)
         end
 
@@ -795,8 +789,8 @@ describe ::API::V3::WorkPackages::WorkPackageRepresenter do
           let(:work_package) { FactoryBot.create(:work_package, project: project) }
           let!(:forbidden_work_package) do
             FactoryBot.create(:work_package,
-                               project: forbidden_project,
-                               parent: work_package)
+                              project: forbidden_project,
+                              parent: work_package)
           end
 
           it { expect(subject).not_to have_json_path('_links/children') }
@@ -804,8 +798,8 @@ describe ::API::V3::WorkPackages::WorkPackageRepresenter do
           describe 'visible and invisible children' do
             let!(:child) do
               FactoryBot.create(:work_package,
-                                 project: project,
-                                 parent: work_package)
+                                project: project,
+                                parent: work_package)
             end
 
             it { expect(subject).to have_json_size(1).at_path('_links/children') }
@@ -839,9 +833,11 @@ describe ::API::V3::WorkPackages::WorkPackageRepresenter do
       end
 
       describe 'copy' do
-        it_behaves_like 'action link' do
-          let(:action) { 'copy' }
+        it_behaves_like 'has a titled action link' do
+          let(:link) { 'copy' }
+          let(:href) { new_work_package_move_path(work_package, copy: true, ids: [work_package.id]) }
           let(:permission) { :move_work_packages }
+          let(:title) { "Copy #{work_package.subject}" }
         end
       end
 
@@ -912,8 +908,8 @@ describe ::API::V3::WorkPackages::WorkPackageRepresenter do
       describe 'customActions' do
         it 'has a collection of customActions' do
           unassign_action = FactoryBot.build_stubbed(:custom_action,
-                                                      actions: [CustomActions::Actions::AssignedTo.new(value: nil)],
-                                                      name: 'Unassign')
+                                                     actions: [CustomActions::Actions::AssignedTo.new(value: nil)],
+                                                     name: 'Unassign')
           allow(work_package)
             .to receive(:custom_actions)
             .and_return([unassign_action])
@@ -958,7 +954,7 @@ describe ::API::V3::WorkPackages::WorkPackageRepresenter do
       describe 'relations' do
         let(:relation) do
           FactoryBot.build_stubbed(:relation,
-                                    from: work_package)
+                                   from: work_package)
         end
 
         before do
@@ -993,8 +989,8 @@ describe ::API::V3::WorkPackages::WorkPackageRepresenter do
       describe 'customActions' do
         it 'has an array of customActions' do
           unassign_action = FactoryBot.build_stubbed(:custom_action,
-                                                      actions: [CustomActions::Actions::AssignedTo.new(value: nil)],
-                                                      name: 'Unassign')
+                                                     actions: [CustomActions::Actions::AssignedTo.new(value: nil)],
+                                                     name: 'Unassign')
           allow(work_package)
             .to receive(:custom_actions)
             .and_return([unassign_action])
@@ -1068,60 +1064,12 @@ describe ::API::V3::WorkPackages::WorkPackageRepresenter do
             .not_to eql former_cache_key
         end
 
-        it 'changes when the work_package\'s type is updated' do
-          work_package.type.updated_at = Time.now + 20.seconds
+        it 'factors in the eager loaded cache_checksum' do
+          expect(work_package)
+            .to receive(:cache_checksum)
+            .and_return(srand)
 
-          expect(representer.json_cache_key)
-            .not_to eql former_cache_key
-        end
-
-        it 'changes when the work_package\'s project is updated' do
-          work_package.project.updated_on = Time.now + 20.seconds
-
-          expect(representer.json_cache_key)
-            .not_to eql former_cache_key
-        end
-
-        it 'changes when the work_package\'s status is updated' do
-          work_package.status.updated_at = Time.now + 20.seconds
-
-          expect(representer.json_cache_key)
-            .not_to eql former_cache_key
-        end
-
-        it 'changes when the work_package\'s priority is updated' do
-          work_package.priority.updated_at = Time.now + 20.seconds
-
-          expect(representer.json_cache_key)
-            .not_to eql former_cache_key
-        end
-
-        it 'changes when the work_package\'s category is updated' do
-          work_package.category.updated_at = Time.now + 20.seconds
-
-          expect(representer.json_cache_key)
-            .not_to eql former_cache_key
-        end
-
-        it 'changes when the work_package\'s author is updated' do
-          work_package.author.updated_on = Time.now + 20.seconds
-
-          expect(representer.json_cache_key)
-            .not_to eql former_cache_key
-        end
-
-        it 'changes when the work_package\'s responsible is updated' do
-          work_package.responsible.updated_on = Time.now + 20.seconds
-
-          expect(representer.json_cache_key)
-            .not_to eql former_cache_key
-        end
-
-        it 'changes when the work_package\'s assigned_to is updated' do
-          work_package.assigned_to.updated_on = Time.now + 20.seconds
-
-          expect(representer.json_cache_key)
-            .not_to eql former_cache_key
+          representer.json_cache_key
         end
       end
     end
