@@ -268,21 +268,19 @@ module API
 
         def embedded_link_value_getter(custom_field)
           proc do
-            next unless represented.available_custom_fields.include?(custom_field)
+            # Do not embed list or multi values as their links contain all the
+            # information needed (title and href) already.
+            next if !represented.available_custom_fields.include?(custom_field) ||
+                    custom_field.list ||
+                    custom_field.multi_value?
 
             value = represented.send custom_field.accessor_name
 
-            if value
-              if custom_field.list? || custom_field.multi_value?
-                # Do not embed list or multi values as their links contain all the
-                # information needed (title and href) already.
-                nil
-              else
-                representer_class = REPRESENTER_MAP[custom_field.field_format]
+            next unless value
 
-                representer_class.new(value, current_user: current_user)
-              end
-            end
+            representer_class = REPRESENTER_MAP[custom_field.field_format]
+
+            representer_class.new(value, current_user: current_user)
           end
         end
 

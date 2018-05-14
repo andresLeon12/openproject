@@ -77,7 +77,7 @@ module API
                               .where(customized_type: 'WorkPackage', customized_id: work_packages.map(&:id))
                               .group_by(&:customized_id)
 
-              custom_values.values.each do |values|
+              custom_values.each_value do |values|
                 values.each do |value|
                   value.custom_field = custom_field(value.custom_field_id)
                 end
@@ -152,8 +152,8 @@ module API
 
           def usage_map
             @usage_map ||= begin
-              usages.inject(usage_hash) do |hash, by_project_and_type|
-                hash[by_project_and_type['project_id']][by_project_and_type['type_id']] << custom_field(by_project_and_type['custom_field_id'])
+              usages.inject(usage_hash) do |hash, by|
+                hash[by['project_id']][by['type_id']] << custom_field(by['custom_field_id'])
                 hash
               end
             end

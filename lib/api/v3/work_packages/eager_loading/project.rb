@@ -50,18 +50,20 @@ module API
 
           def projects_by_id
             @projects_by_id ||= begin
-              project_ids = work_packages.map do |work_package|
-                [work_package.project_id, work_package.parent && work_package.parent.project_id] +
-                  work_package.children.map(&:project_id)
-              end
-
               ::Project
                 .includes(:enabled_modules)
-                .where(id: project_ids.flatten.uniq.compact)
+                .where(id: project_ids)
                 .to_a
                 .map { |p| [p.id, p] }
                 .to_h
             end
+          end
+
+          def project_ids
+            work_packages.map do |work_package|
+              [work_package.project_id, work_package.parent && work_package.parent.project_id] +
+                work_package.children.map(&:project_id)
+            end.flatten.uniq.compact
           end
         end
       end
