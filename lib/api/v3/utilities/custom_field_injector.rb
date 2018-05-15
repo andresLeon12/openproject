@@ -44,7 +44,7 @@ module API
           'list' => 'CustomOption'
         }.freeze
 
-        LINK_FORMATS = ['list', 'user', 'version'].freeze
+        LINK_FORMATS = %w(list user version).freeze
 
         PATH_METHOD_MAP = {
           'user' => :user,
@@ -65,18 +65,18 @@ module API
         }.freeze
 
         class << self
-          def create_value_representer(customizable, representer)
-            new_representer_class_with(representer, customizable) do |injector|
-              customizable.available_custom_fields.each do |custom_field|
+          def create_value_representer(custom_fields, representer)
+            new_representer_class_with(representer) do |injector|
+              custom_fields.each do |custom_field|
                 injector.inject_value(custom_field)
               end
             end
           end
 
-          def create_schema_representer(customizable, representer)
-            new_representer_class_with(representer, customizable) do |injector|
-              customizable.available_custom_fields.each do |custom_field|
-                injector.inject_schema(custom_field, customized: customizable)
+          def create_schema_representer(custom_fields, representer)
+            new_representer_class_with(representer) do |injector|
+              custom_fields.each do |custom_field|
+                injector.inject_schema(custom_field)
               end
             end
           end
@@ -91,8 +91,8 @@ module API
             !linked_field?(custom_field)
           end
 
-          def new_representer_class_with(representer, customizable)
-            injector = new(representer, customizable)
+          def new_representer_class_with(representer)
+            injector = new(representer)
 
             yield injector
 
@@ -100,32 +100,24 @@ module API
           end
         end
 
-        def initialize(representer_class, customizable)
+        def initialize(representer_class)
           @class = Class.new(representer_class) do
             include API::Decorators::LinkedResource
-
-            class << self
-              attr_accessor :customizable
-            end
           end
-
-          @class.customizable = customizable
-
-          @class
         end
 
         def modified_representer_class
           @class
         end
 
-        def inject_schema(custom_field, customized: nil)
+        def inject_schema(custom_field)
           case custom_field.field_format
           when 'version'
-            inject_version_schema(custom_field, customized)
+            inject_version_schema(custom_field)
           when 'user'
-            inject_user_schema(custom_field, customized)
+            inject_user_schema(custom_field)
           when 'list'
-            inject_list_schema(custom_field, customized)
+            inject_list_schema(custom_field)
           else
             inject_basic_schema(custom_field)
           end
@@ -146,14 +138,12 @@ module API
           "customField#{id}".to_sym
         end
 
-        def inject_version_schema(custom_field, customized)
-          raise ArgumentError unless customized
-
+        def inject_version_schema(custom_field)
           @class.schema_with_allowed_collection property_name(custom_field.id),
                                                 type: 'Version',
                                                 name_source: ->(*) { custom_field.name },
                                                 values_callback: ->(*) {
-                                                  customized
+                                                  represented
                                                     .assignable_custom_field_values(custom_field)
                                                 },
                                                 writable: true,
@@ -167,9 +157,7 @@ module API
                                                 required: custom_field.is_required
         end
 
-        def inject_user_schema(custom_field, customized)
-          raise ArgumentError unless customized
-
+        def inject_user_schema(custom_field)
           type = custom_field.multi_value? ? "[]User" : "User"
 
           @class.schema_with_allowed_link property_name(custom_field.id),
@@ -177,14 +165,14 @@ module API
                                           writable: true,
                                           name_source: ->(*) { custom_field.name },
                                           required: custom_field.is_required,
-                                          href_callback: allowed_users_href_callback(customized)
+                                          href_callback: allowed_users_href_callback
         end
 
-        def inject_list_schema(custom_field, customized)
+        def inject_list_schema(custom_field)
           representer = CustomOptions::CustomOptionRepresenter
           type = custom_field.multi_value ? "[]CustomOption" : "CustomOption"
           name_source = ->(*) { custom_field.name }
-          values_callback = ->(*) { customized.assignable_custom_field_values(custom_field) }
+          values_callback = ->(*) { represented.assignable_custom_field_values(custom_field) }
           link_factory = ->(value) do
             {
               href: api_v3_paths.custom_option(value.id),
@@ -317,7 +305,7 @@ module API
           }
         end
 
-        def allowed_users_href_callback(customized)
+        def allowed_users_href_callback
           # for now we ASSUME that every customized that has a
           # user custom field, will also define a project...
           ->(*) {
@@ -325,7 +313,7 @@ module API
                                   values: [Principal::STATUSES[:builtin].to_s,
                                            Principal::STATUSES[:locked].to_s] } },
                       { type: { operator: '=', values: ['User'] } },
-                      { member: { operator: '=', values: [customized.project_id.to_s] } }]
+                      { member: { operator: '=', values: [represented.project_id.to_s] } }]
 
             query = CGI.escape(::JSON.dump(params))
 
@@ -343,6 +331,42 @@ module API
 
         def cf_regexp(custom_field)
           custom_field.regexp unless custom_field.regexp.blank?
+        end
+
+        module RepresenterClass
+          def custom_field_injector(config)
+            @custom_field_injector_config = config.reverse_merge custom_field_injector_config
+          end
+
+          def custom_field_injector_config
+            @custom_field_injector_config ||= { type: :value_representer,
+                                                injector_class: ::API::V3::Utilities::CustomFieldInjector }
+          end
+
+          def create_class(represented)
+            custom_field_class(represented.available_custom_fields)
+          end
+
+          def create(*args)
+            create_class(args.first)
+              .new(*args)
+          end
+
+          def custom_field_class(custom_fields)
+            custom_field_sha = OpenProject::Cache::CacheKey.expand(custom_fields.sort_by(&:id))
+
+            cached_custom_field_classes[custom_field_sha] ||= begin
+              injector_class = custom_field_injector_config[:injector_class]
+
+              method_name = :"create_#{custom_field_injector_config[:type]}"
+
+              injector_class.send(method_name, custom_fields, self)
+            end
+          end
+
+          def cached_custom_field_classes
+            @cached_custom_field_classes ||= {}
+          end
         end
       end
     end

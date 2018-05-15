@@ -4,15 +4,13 @@ module API
   module V3
     module WorkPackages
       class WorkPackageSumsRepresenter < ::API::Decorators::Single
+        extend ::API::V3::Utilities::CustomFieldInjector::RepresenterClass
+
+        custom_field_injector(injector_class: ::API::V3::Utilities::CustomFieldSumInjector)
+
         def initialize(sums)
           # breaking inheritance law here
           super(sums, current_user: nil)
-        end
-
-        def self.create_class(schema)
-          injector_class = ::API::V3::Utilities::CustomFieldSumInjector
-          injector_class.create_value_representer(schema,
-                                                  self)
         end
 
         def self.create(sums)

@@ -121,13 +121,7 @@ module API
                    getter: ->(*) {
                      all_fields = represented.map(&:available_custom_fields).flatten.uniq
 
-                     avail_cfs_class = Class.new do
-                       define_method(:available_custom_fields) do
-                         all_fields
-                       end
-                     end
-
-                     rep_class = element_decorator.create_class(avail_cfs_class.new)
+                     rep_class = element_decorator.custom_field_class(all_fields)
 
                      represented.map do |model|
                        rep_class.new(model, current_user: current_user)

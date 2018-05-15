@@ -36,20 +36,13 @@ module API
       module Schema
         class WorkPackageSchemaRepresenter < ::API::Decorators::SchemaRepresenter
           include API::Caching::CachedRepresenter
+          extend ::API::V3::Utilities::CustomFieldInjector::RepresenterClass
+
+          custom_field_injector type: :schema_representer
 
           class << self
             def represented_class
               WorkPackage
-            end
-
-            def create_class(work_package_schema)
-              injector_class = ::API::V3::Utilities::CustomFieldInjector
-              injector_class.create_schema_representer(work_package_schema,
-                                                       WorkPackageSchemaRepresenter)
-            end
-
-            def create(work_package_schema, self_link, context)
-              create_class(work_package_schema).new(work_package_schema, self_link, context)
             end
 
             def attribute_group(property)

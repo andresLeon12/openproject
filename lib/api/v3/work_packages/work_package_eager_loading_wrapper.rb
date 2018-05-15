@@ -38,6 +38,8 @@ module API
           true
         end
 
+        private
+
         class << self
           def wrap(ids_in_order, current_user)
             work_packages = add_eager_loading(WorkPackage.where(id: ids_in_order), current_user).to_a

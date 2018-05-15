@@ -49,7 +49,11 @@ describe ::API::V3::WorkPackages::WorkPackageRepresenter do
                              parent: parent,
                              type: type,
                              project: project,
-                             priority: priority)
+                             priority: priority) do |wp|
+      allow(wp)
+        .to receive(:available_custom_fields)
+        .and_return(available_custom_fields)
+    end
   end
   let(:all_permissions) do
     %i[
@@ -69,6 +73,7 @@ describe ::API::V3::WorkPackages::WorkPackageRepresenter do
   let(:permissions) { all_permissions }
   let(:project) { FactoryBot.build_stubbed(:project_with_types) }
   let(:type) { project.types.first }
+  let(:available_custom_fields) { [] }
 
   before(:each) do
     allow(User).to receive(:current).and_return current_user
@@ -286,6 +291,7 @@ describe ::API::V3::WorkPackages::WorkPackageRepresenter do
     end
 
     describe 'custom fields' do
+      let(:available_custom_fields) { [FactoryBot.build_stubbed(:int_wp_custom_field)] }
       it 'uses a CustomFieldInjector' do
         expect(::API::V3::Utilities::CustomFieldInjector).to receive(:create_value_representer)
           .and_call_original
